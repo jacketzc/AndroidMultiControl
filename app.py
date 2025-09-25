@@ -50,15 +50,6 @@ class App:
             lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         )
 
-        # self.canvas_frame1 = tk.Frame(self.main_container)
-        # self.canvas1 = tk.Canvas(self.canvas_frame1, highlightthickness=0)
-        # self.scrollbar1 = ttk.Scrollbar(self.canvas_frame1, orient="vertical", command=self.canvas1.yview)
-        # self.scrollable_frame1 = tk.Frame(self.canvas1)
-        # self.scrollable_frame1.bind(
-        #     "<Configure>",
-        #     lambda e: self.canvas1.configure(scrollregion=self.canvas1.bbox("all"))
-        # )
-
 
         # 在Canvas上创建窗口，将滚动框架放入其中
         self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
@@ -300,38 +291,45 @@ class App:
 
     def capture_screenshot(self, device_id):
         """为指定设备截取屏幕截图并返回PIL Image对象"""
+        temp_filename = None
         try:
             # 创建临时文件
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
-            temp_filename = temp_file.name
-            temp_file.close()  # 关闭文件句柄，允许adb写入
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as temp_file:
+                temp_filename = temp_file.name
+                # 执行adb命令抓取截图到临时文件
+                result = subprocess.run(['adb', '-s', device_id, 'exec-out', 'screencap', '-p'],
+                                        stdout=temp_file,
+                                        stderr=subprocess.PIPE,
+                                        check=True)
 
-            # 执行adb命令抓取截图
-            result = subprocess.run(['adb', '-s', device_id, 'exec-out', 'screencap', '-p'],
-                                    stdout=open(temp_filename, 'wb'),
-                                    stderr=subprocess.PIPE,
-                                    check=True)
-
-            # 打开临时文件并转换为PIL Image
+            # 确保文件句柄已关闭后，再打开进行PIL处理
             image = Image.open(temp_filename)
+            # 复制图像数据到内存
+            image_copy = image.copy()
+            image.close()  # 关闭原始图像
+
             # 删除临时文件
             os.unlink(temp_filename)
-            return image
+            temp_filename = None  # 清空变量
+
+            return image_copy
         except subprocess.CalledProcessError as e:
             print(f"截图失败 for {device_id}: {e.stderr.decode()}")
-            # 删除可能已创建的临时文件
-            try:
-                os.unlink(temp_filename)
-            except:
-                pass
+            # 确保即使出错也删除临时文件
+            if temp_filename and os.path.exists(temp_filename):
+                try:
+                    os.unlink(temp_filename)
+                except:
+                    pass
             return None
         except Exception as e:
             print(f"处理截图时出错 for {device_id}: {e}")
-            # 删除可能已创建的临时文件
-            try:
-                os.unlink(temp_filename)
-            except:
-                pass
+            # 确保即使出错也删除临时文件
+            if temp_filename and os.path.exists(temp_filename):
+                try:
+                    os.unlink(temp_filename)
+                except:
+                    pass
             return None
 
     def resize_image_to_thumbnail(self, pil_image, size=None):
