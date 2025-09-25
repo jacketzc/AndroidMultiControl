@@ -4,6 +4,7 @@
 
 - Add a single '{ip:port}' mobile phone
 - Scan the mobile phone under the specified network segment
+- Thumbnail display
 - Use the 'scrcpy' connection
 
 ![](./static/pic/first_page.png)
@@ -31,6 +32,7 @@
 
 - 添加单个`{ip:port}`的手机
 - 扫描指定网段下的手机
+- 缩略图展示
 - 使用`scrcpy`连接
 
 #### 环境需要
